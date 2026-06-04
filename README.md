@@ -14,35 +14,49 @@ API REST para la gestión académica de un bootcamp multi-campus, construida con
 
 ## Modelo lógico para MongoDB
 
-Este proyecto implementa una base de datos **no relacional** con **MongoDB Atlas**. El modelo lógico no se traduce a tablas SQL, sino a colecciones de documentos. Las relaciones entre entidades se representan mediante **referencias con `ObjectId`**, especialmente en las colecciones `alumnos`, `cursos`, `proyectos` y `notas`.
+Este proyecto implementa una base de datos **no relacional** con **MongoDB Atlas**. El modelo lógico no se traduce a tablas SQL, sino a colecciones de documentos. Las relaciones entre entidades se representan mediante **referencias con `ObjectId`**.
+
+### Lógica del modelo
+
+```
+Un PROFESOR imparte un CURSO
+Un CURSO tiene muchos ALUMNOS
+Un CURSO tiene muchos PROYECTOS
+Una NOTA conecta un ALUMNO + un PROYECTO + el PROFESOR que lo corrige
+```
 
 ### Colecciones principales
 
 | Colección | Descripción |
 |-----------|-------------|
-| `Admin` | Usuario con acceso total al sistema |
-| `Alumno` | Estudiante perteneciente a un curso |
-| `Profesor` | Docente que imparte cursos y corrige notas |
-| `Curso` | Agrupación de alumnos por campus y promoción |
+| `Admin` | Acceso total al sistema. Gestiona usuarios y cursos |
+| `Profesor` | Imparte cursos y corrige notas de sus alumnos |
+| `Alumno` | Pertenece a un curso y puede consultar sus notas |
+| `Curso` | Agrupación de alumnos (ej: "Full Stack Web Sevilla 2025") |
 | `Proyecto` | Entregable evaluable dentro de un curso |
 | `Nota` | Relación entre alumno, proyecto y profesor |
 
 ### Relaciones
 
 ```
-Curso
-└── tiene muchos Alumnos
-└── tiene muchos Proyectos
+Admin
+└── gestiona todo el sistema
 
 Profesor
 └── imparte muchos Cursos
 └── corrige muchas Notas
+
+Curso
+└── tiene muchos Alumnos
+└── tiene muchos Proyectos
+└── pertenece a un Profesor
 
 Alumno
 └── pertenece a un Curso
 └── tiene muchas Notas
 
 Proyecto
+└── pertenece a un Curso
 └── tiene muchas Notas
 
 Nota
@@ -57,14 +71,16 @@ ADMIN
 ├── nombre
 ├── email
 ├── password
-└── rol
+└── rol: "admin"
 
 PROFESOR
 ├── _id
 ├── nombre
 ├── apellidos
 ├── email
+├── password
 ├── especialidad
+├── rol: "profesor"
 └── cursos: [cursoId]
 
 ALUMNO
@@ -72,14 +88,15 @@ ALUMNO
 ├── nombre
 ├── apellidos
 ├── email
+├── password
 ├── edad
 ├── campus
+├── rol: "alumno"
 └── cursoId
 
 CURSO
 ├── _id
 ├── nombre
-├── promocion
 ├── campus
 ├── fechaInicio
 ├── fechaFin
@@ -89,15 +106,14 @@ PROYECTO
 ├── _id
 ├── nombre
 ├── descripcion
-├── cursoId
-└── fechaEntrega
+├── fechaEntrega
+└── cursoId
 
 NOTA
 ├── _id
 ├── alumnoId
 ├── proyectoId
 ├── profesorId
-├── cursoId
 ├── calificacion
 ├── estado
 └── observaciones
@@ -122,50 +138,48 @@ El proyecto sigue el patrón **Model–View–Controller** con las responsabilid
 src/
 ├── app.js
 ├── routes/
-│   ├── alumnoRoutes.js
-│   ├── profesorRoutes.js
 │   ├── adminRoutes.js
+│   ├── profesorRoutes.js
+│   ├── alumnoRoutes.js
+│   ├── cursoRoutes.js
 │   ├── proyectoRoutes.js
-│   ├── notaRoutes.js
-│   └── cursoRoutes.js
+│   └── notaRoutes.js
 ├── controllers/
-│   ├── alumnoController.js
-│   ├── profesorController.js
 │   ├── adminController.js
+│   ├── profesorController.js
+│   ├── alumnoController.js
+│   ├── cursoController.js
 │   ├── proyectoController.js
-│   ├── notaController.js
-│   └── cursoController.js
+│   └── notaController.js
 ├── services/
-│   ├── alumnoService.js
-│   ├── profesorService.js
 │   ├── adminService.js
+│   ├── profesorService.js
+│   ├── alumnoService.js
+│   ├── cursoService.js
 │   ├── proyectoService.js
-│   ├── notaService.js
-│   └── cursoService.js
+│   └── notaService.js
 └── models/
-    ├── Alumno.js
-    ├── Profesor.js
     ├── Admin.js
+    ├── Profesor.js
+    ├── Alumno.js
+    ├── Curso.js
     ├── Proyecto.js
-    ├── Nota.js
-    └── Curso.js
+    └── Nota.js
 ```
 
 ---
 
 ## CRUD implementado
 
-CRUD completo sobre 6 recursos: **Alumnos**, **Profesores**, **Admins**, **Proyectos**, **Notas** y **Cursos**.
-
-### Alumnos
+### Admins
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| `GET` | `/alumnos` | Obtener todos los alumnos |
-| `GET` | `/alumnos/:id` | Obtener un alumno por ID |
-| `POST` | `/alumnos` | Crear un nuevo alumno |
-| `PUT` | `/alumnos/:id` | Actualizar un alumno |
-| `DELETE` | `/alumnos/:id` | Eliminar un alumno |
+| `GET` | `/admins` | Obtener todos los admins |
+| `GET` | `/admins/:id` | Obtener un admin por ID |
+| `POST` | `/admins` | Crear un nuevo admin |
+| `PUT` | `/admins/:id` | Actualizar un admin |
+| `DELETE` | `/admins/:id` | Eliminar un admin |
 
 ### Profesores
 
@@ -177,15 +191,25 @@ CRUD completo sobre 6 recursos: **Alumnos**, **Profesores**, **Admins**, **Proye
 | `PUT` | `/profesores/:id` | Actualizar un profesor |
 | `DELETE` | `/profesores/:id` | Eliminar un profesor |
 
-### Admins
+### Alumnos
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| `GET` | `/admins` | Obtener todos los admins |
-| `GET` | `/admins/:id` | Obtener un admin por ID |
-| `POST` | `/admins` | Crear un nuevo admin |
-| `PUT` | `/admins/:id` | Actualizar un admin |
-| `DELETE` | `/admins/:id` | Eliminar un admin |
+| `GET` | `/alumnos` | Obtener todos los alumnos |
+| `GET` | `/alumnos/:id` | Obtener un alumno por ID |
+| `POST` | `/alumnos` | Crear un nuevo alumno |
+| `PUT` | `/alumnos/:id` | Actualizar un alumno |
+| `DELETE` | `/alumnos/:id` | Eliminar un alumno |
+
+### Cursos
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/cursos` | Obtener todos los cursos |
+| `GET` | `/cursos/:id` | Obtener un curso por ID |
+| `POST` | `/cursos` | Crear un nuevo curso |
+| `PUT` | `/cursos/:id` | Actualizar un curso |
+| `DELETE` | `/cursos/:id` | Eliminar un curso |
 
 ### Proyectos
 
@@ -206,16 +230,6 @@ CRUD completo sobre 6 recursos: **Alumnos**, **Profesores**, **Admins**, **Proye
 | `POST` | `/notas` | Crear una nueva nota |
 | `PUT` | `/notas/:id` | Actualizar una nota |
 | `DELETE` | `/notas/:id` | Eliminar una nota |
-
-### Cursos
-
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| `GET` | `/cursos` | Obtener todos los cursos |
-| `GET` | `/cursos/:id` | Obtener un curso por ID |
-| `POST` | `/cursos` | Crear un nuevo curso |
-| `PUT` | `/cursos/:id` | Actualizar un curso |
-| `DELETE` | `/cursos/:id` | Eliminar un curso |
 
 ---
 
